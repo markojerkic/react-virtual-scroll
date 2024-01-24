@@ -1,6 +1,7 @@
-import { QueryClient, QueryClientContext, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "./App.css";
-import { Pokemon } from "./components/pokemon";
+import { Pokemon } from "@/components/pokemon";
+import { SelectScrollable } from "@/components/scrollable";
 
 
 const queryClient = new QueryClient();
@@ -8,12 +9,12 @@ const queryClient = new QueryClient();
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="App">
+      <div className="bg-slate-100">
         <header className="App-header">
           <h1>React Query Demo</h1>
         </header>
 
-        <main>
+        <main className="bg-slate-100">
           <Pokemon />
         </main>
       </div>

@@ -1,4 +1,13 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useInView } from "react-intersection-observer";
+import { useEffect } from "react";
 
 type PokemonPage = {
   next: string;
@@ -10,16 +19,26 @@ type Pokemon = {
 };
 
 export const Pokemon = () => {
-  const { data, isLoading, isError } = useInfiniteQuery({
+  const {ref, inView} = useInView();
+
+  const { data, isLoading, isError, fetchNextPage } = useInfiniteQuery({
     queryKey: ["pokemon"],
     queryFn: async ({ pageParam }) => {
-      return fetch(pageParam).then((res) => res.json() as Promise<PokemonPage>);
+      const url = new URL(pageParam);
+      url.searchParams.set("limit", "200");
+      return fetch(url.toString()).then((res) => res.json() as Promise<PokemonPage>);
     },
-    initialPageParam: "https://pokeapi.co/api/v2/pokemon",
+    initialPageParam: "https://pokeapi.co/api/v2/pokemon?limit=200",
     getNextPageParam: (lastPage: PokemonPage) => {
       return lastPage.next;
     },
   });
+
+  useEffect(() => {
+    if (inView) {
+      fetchNextPage();
+    }
+  }, [inView]);
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -28,20 +47,27 @@ export const Pokemon = () => {
     return <div>Error</div>;
   }
 
-  return (
-    <main className="">
-      <h1 className="text-xl">Pokemon</h1>
+  const allPokemon = data.pages.flatMap((page) => page.results);
 
-      <ul>
-        {data?.pages.map((page) =>
-          page.results.map((pokemon) => (
-            <li key={pokemon.name}>
-              <p>{pokemon.name}</p>
-              <img src={pokemon.url} alt={pokemon.name} />
-            </li>
-          ))
-        )}
-      </ul>
-    </main>
+  return (
+    <Select>
+      <SelectTrigger>
+        <SelectValue placeholder="Pokemon" />
+      </SelectTrigger>
+      <SelectContent>
+        {allPokemon.map((pokemon, i) => (
+          <SelectItem className="grid grid-cols-4" key={pokemon.name} value={pokemon.name}>
+            <small>{i+1}</small>
+            <img
+              className="col-span-1 w-13 h-12"
+              src={`https://img.pokemondb.net/sprites/home/normal/${pokemon.name}.png`}
+              alt={pokemon.name}
+            />
+            <span className="col-span-3">{pokemon.name}</span>
+          </SelectItem>
+        ))}
+        <div ref={ref} />
+      </SelectContent>
+    </Select>
   );
-}
+};
