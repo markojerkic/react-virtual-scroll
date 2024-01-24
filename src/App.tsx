@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "./App.css";
-import { Pokemon } from "@/components/pokemon";
-import { SelectScrollable } from "@/components/scrollable";
+import { Pokemon } from "@/components/pokemon-new";
 
 
 const queryClient = new QueryClient();

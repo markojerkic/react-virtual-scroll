@@ -1,12 +1,4 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useInView } from "react-intersection-observer";
 import { ElementRef, useEffect, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
@@ -20,15 +12,24 @@ type Pokemon = {
 };
 
 export const Pokemon = () => {
-  const { ref, inView } = useInView();
+  // const { ref, inView } = useInView();
   const virtualizerRef = useRef<ElementRef<"div">>(null);
 
-  const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
+  const {
+    data,
+    isLoading,
+    isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ["pokemon"],
     queryFn: async ({ pageParam }) => {
       const url = new URL(pageParam);
-      url.searchParams.set("limit", "200");
-      return fetch(url.toString()).then((res) => res.json() as Promise<PokemonPage>);
+      url.searchParams.set("limit", "20");
+      return fetch(url.toString()).then(
+        (res) => res.json() as Promise<PokemonPage>
+      );
     },
     initialPageParam: "https://pokeapi.co/api/v2/pokemon?limit=200",
     getNextPageParam: (lastPage: PokemonPage) => {
@@ -38,18 +39,18 @@ export const Pokemon = () => {
 
   const allPokemon = data?.pages.flatMap((page) => page.results) ?? [];
 
-  const virtualizer = useVirtualizer({
+  const rowVirtualizer = useVirtualizer({
     count: hasNextPage ? allPokemon?.length + 1 : allPokemon?.length,
-    estimateSize: () => 600,
+    estimateSize: () => 5,
     overscan: 5,
-    getScrollElement: () => virtualizerRef.current
+    getScrollElement: () => virtualizerRef.current,
   });
 
   useEffect(() => {
-    const [lastItem] = [...virtualizer.getVirtualItems()].reverse()
+    const [lastItem] = [...rowVirtualizer.getVirtualItems()].reverse();
 
     if (!lastItem) {
-      return
+      return;
     }
 
     if (
@@ -57,15 +58,15 @@ export const Pokemon = () => {
       hasNextPage &&
       !isFetchingNextPage
     ) {
-      fetchNextPage()
+      fetchNextPage();
     }
   }, [
     hasNextPage,
     fetchNextPage,
     allPokemon.length,
     isFetchingNextPage,
-    virtualizer.getVirtualItems(),
-  ])
+    rowVirtualizer.getVirtualItems(),
+  ]);
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -75,24 +76,45 @@ export const Pokemon = () => {
   }
 
   return (
-    <Select>
-      <SelectTrigger>
-        <SelectValue placeholder="Pokemon" />
-      </SelectTrigger>
-      <SelectContent ref={virtualizerRef}>
-        {virtualizer.getVirtualItems().map(index => allPokemon[index.index]).map((pokemon, i) => (
-          <SelectItem className="grid grid-cols-4" key={pokemon.name} value={pokemon.name}>
-            <small>{i + 1}</small>
-            <img
-              className="col-span-1 w-13 h-12"
-              src={`https://img.pokemondb.net/sprites/home/normal/${pokemon.name}.png`}
-              alt={pokemon.name}
-            />
-            <span className="col-span-3">{pokemon.name}</span>
-          </SelectItem>
-        ))}
-        <div ref={ref} />
-      </SelectContent>
-    </Select>
+    <div className="overflow-y-auto h-96" ref={virtualizerRef}>
+        <div
+          style={{
+            height: `${rowVirtualizer.getTotalSize()}rem`,
+            width: "100%",
+            position: "relative",
+          }}
+        >
+          {rowVirtualizer
+            .getVirtualItems()
+            .filter((virtualRow) => virtualRow.index < allPokemon.length)
+            .map((virtualRow) => {
+              console.log("virtualka", virtualRow.index)
+              return {
+                virtualRow,
+                pokemon: allPokemon[virtualRow.index],
+              }
+            })
+            .map(({ virtualRow, pokemon }) => (
+              <div
+                className="grid"
+                key={virtualRow.index}
+                style={{
+                  position: 'absolute',
+                  width: '100%',
+                  height: `${virtualRow.size}rem`,
+                  transform: `translateY(${virtualRow.start}rem)`,
+                }}
+              >
+                <span className="col-span-1">{virtualRow.index}</span>
+                <img
+                  className="col-span-1 w-13 h-12"
+                  src={`https://img.pokemondb.net/sprites/home/normal/${pokemon.name}.png`}
+                  alt={pokemon.name}
+                />
+                <span className="col-span-3">{pokemon.name}</span>
+              </div>
+            ))}
+        </div>
+      </div>
   );
 };
