@@ -7,7 +7,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useInView } from "react-intersection-observer";
-import { useEffect } from "react";
+import { ElementRef, useEffect, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 type PokemonPage = {
   next: string;
@@ -19,9 +20,10 @@ type Pokemon = {
 };
 
 export const Pokemon = () => {
-  const {ref, inView} = useInView();
+  const { ref, inView } = useInView();
+  const virtualizerRef = useRef<ElementRef<"div">>(null);
 
-  const { data, isLoading, isError, fetchNextPage } = useInfiniteQuery({
+  const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
     queryKey: ["pokemon"],
     queryFn: async ({ pageParam }) => {
       const url = new URL(pageParam);
@@ -34,30 +36,53 @@ export const Pokemon = () => {
     },
   });
 
+  const allPokemon = data?.pages.flatMap((page) => page.results) ?? [];
+
+  const virtualizer = useVirtualizer({
+    count: hasNextPage ? allPokemon?.length + 1 : allPokemon?.length,
+    estimateSize: () => 600,
+    overscan: 5,
+    getScrollElement: () => virtualizerRef.current
+  });
+
   useEffect(() => {
-    if (inView) {
-      fetchNextPage();
+    const [lastItem] = [...virtualizer.getVirtualItems()].reverse()
+
+    if (!lastItem) {
+      return
     }
-  }, [inView]);
+
+    if (
+      lastItem.index >= allPokemon.length - 1 &&
+      hasNextPage &&
+      !isFetchingNextPage
+    ) {
+      fetchNextPage()
+    }
+  }, [
+    hasNextPage,
+    fetchNextPage,
+    allPokemon.length,
+    isFetchingNextPage,
+    virtualizer.getVirtualItems(),
+  ])
 
   if (isLoading) {
     return <div>Loading...</div>;
   }
-  if (isError || !data) {
+  if (isError || !allPokemon) {
     return <div>Error</div>;
   }
-
-  const allPokemon = data.pages.flatMap((page) => page.results);
 
   return (
     <Select>
       <SelectTrigger>
         <SelectValue placeholder="Pokemon" />
       </SelectTrigger>
-      <SelectContent>
-        {allPokemon.map((pokemon, i) => (
+      <SelectContent ref={virtualizerRef}>
+        {virtualizer.getVirtualItems().map(index => allPokemon[index.index]).map((pokemon, i) => (
           <SelectItem className="grid grid-cols-4" key={pokemon.name} value={pokemon.name}>
-            <small>{i+1}</small>
+            <small>{i + 1}</small>
             <img
               className="col-span-1 w-13 h-12"
               src={`https://img.pokemondb.net/sprites/home/normal/${pokemon.name}.png`}
