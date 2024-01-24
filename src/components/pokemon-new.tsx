@@ -38,12 +38,11 @@ const InsidePortal = () => {
   } = useInfiniteQuery({
     queryKey: ["pokemon"],
     queryFn: async ({ pageParam }) => {
-      const url = new URL(pageParam);
-      url.searchParams.set("limit", "100");
-      return fetch(url.toString()).then(
+      return fetch(pageParam).then(
         (res) => res.json() as Promise<PokemonPage>
       );
     },
+    staleTime: Infinity,
     initialPageParam: "https://pokeapi.co/api/v2/pokemon?limit=100",
     getNextPageParam: (lastPage: PokemonPage) => {
       return lastPage.next;
@@ -84,7 +83,10 @@ const InsidePortal = () => {
 
   return (
     <div className="h-96 overflow-y-scroll" ref={virtualizerRef}>
-      <div className={`relative w-full h-[${rowVirtualizer}px]`}>
+      <div className="relative w-full"
+        style={{
+          height: `${rowVirtualizer.getTotalSize()}px`,
+        }}>
         {rowVirtualizer.getVirtualItems().map((virtualRow) => {
           const pokemon = allPokemon[virtualRow.index];
 
